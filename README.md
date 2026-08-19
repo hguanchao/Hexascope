@@ -148,7 +148,7 @@ hexascope/
 # PostgreSQL（pgvector 实例，业务表所在）
 docker run -d --name pgvector -p 5433:5432 \
   -e POSTGRES_PASSWORD=your_pgvector_password \
-  -e POSTGRES_DB=req-flow-agent \
+  -e POSTGRES_DB=hexascope \
   pgvector/pgvector:pg16
 
 # Redis
@@ -231,6 +231,7 @@ npm run dev
 
 ### AI 与向量库（`application-dev.yml`）
 
+- **凭据脱敏**：`application-dev.yml` 已本地化/占位——连接指向 `localhost`，密码与模型 Key 通过环境变量注入：`HEXASCOPE_PGVECTOR_PASSWORD`（数据库）、`HEXASCOPE_REDIS_PASSWORD`（Redis）、`HEXASCOPE_API_KEY`（模型），可选用 `HEXASCOPE_POSTGRES_USER` 覆盖用户名。默认值均为不可用的占位符，首次配置请设置对应环境变量或改为本地真实值（该文件被 `.gitignore` 忽略）。
 - **模型接口**：OpenAI 兼容协议，`spring.ai.openai.base-url` 指定（默认 SiliconFlow），`spring.ai.openai.api-key` 配置密钥。
 - **对话模型**：`Qwen/Qwen3.5-4B` — 生成评审意见与评分。
 - **向量模型**：`BAAI/bge-m3` — 输出 1024 维向量，对应表字段 `vector(1024)`。
@@ -254,7 +255,7 @@ npm run dev
 
 ## 数据模型
 
-Flyway 管理，核心表（pgvector 实例 `req-flow-agent` 库）：
+Flyway 管理，核心表（pgvector 实例 `hexascope` 库）：
 
 | 分组 | 表 | 说明 |
 | --- | --- | --- |
