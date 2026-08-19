@@ -1,0 +1,42 @@
+# 文件说明：Spring Boot 环境配置，集中管理服务端口、数据源、缓存和 AI 参数。
+spring:
+  # Spring Boot 应用基础信息。
+  application:
+    # 应用名称，日志和监控里会显示这个名字。
+    name: hexascope-server
+  # 当前激活的配置环境。
+  # dev 表示会同时加载 application-dev.yml。
+  profiles:
+    active: dev
+
+# Web 服务配置。
+server:
+  # 后端 HTTP 服务端口。
+  port: 18080
+  servlet:
+    # 后端接口统一前缀，前端请求会以 /api/v1 开头。
+    context-path: /api/v1
+
+# Spring Boot Actuator 监控配置。
+management:
+  endpoints:
+    web:
+      exposure:
+        # 暴露的监控端点：健康检查、应用信息、指标、Prometheus 指标。
+        include: health,info,metrics,prometheus
+  metrics:
+    export:
+      prometheus:
+        # 是否启用 Prometheus 指标导出。
+        enabled: true
+
+# OpenAPI/Swagger 文档配置，方便在浏览器里查看后端接口。
+springdoc:
+  swagger-ui:
+    # Swagger UI 页面路径。
+    path: /swagger-ui.html
+    # 是否启用 Swagger UI。
+    enabled: true
+  api-docs:
+    # OpenAPI JSON 文档路径。
+    path: /api-docs

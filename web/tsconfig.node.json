@@ -1,0 +1,23 @@
+// 文件说明：TypeScript 编译配置，约束前端源码和构建脚本的类型检查行为。
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    "moduleResolution": "bundler",
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "composite": true,
+    "emitDeclarationOnly": true,
+    "outDir": "./dist-node-types",
+
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "types": ["node"]
+  },
+  "include": ["vite.config.ts"]
+}

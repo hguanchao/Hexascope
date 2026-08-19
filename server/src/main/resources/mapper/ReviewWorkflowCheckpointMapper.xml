@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 文件说明：MyBatis XML 映射配置，承载复杂查询与结果映射规则。 -->
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hexascope.mapper.ReviewWorkflowCheckpointMapper">
+
+    <resultMap id="workflowCheckpointResultMap" type="com.hexascope.model.entity.ReviewWorkflowCheckpoint">
+        <id column="id" property="id" typeHandler="com.hexascope.common.PostgresUuidTypeHandler"/>
+        <result column="review_id" property="reviewId" typeHandler="com.hexascope.common.PostgresUuidTypeHandler"/>
+        <result column="requirement_id" property="requirementId"/>
+        <result column="workflow_instance_id" property="workflowInstanceId"/>
+        <result column="current_node" property="currentNode"/>
+        <result column="status" property="status"/>
+        <result column="state_snapshot" property="stateSnapshot" typeHandler="com.hexascope.common.JsonbTypeHandler"/>
+        <result column="error_message" property="errorMessage"/>
+        <result column="resume_count" property="resumeCount"/>
+        <result column="created_at" property="createdAt" typeHandler="com.hexascope.common.PostgresLocalDateTimeTypeHandler"/>
+        <result column="updated_at" property="updatedAt" typeHandler="com.hexascope.common.PostgresLocalDateTimeTypeHandler"/>
+        <result column="completed_at" property="completedAt" typeHandler="com.hexascope.common.PostgresLocalDateTimeTypeHandler"/>
+    </resultMap>
+
+    <select id="findLatestByReviewId" resultMap="workflowCheckpointResultMap">
+        SELECT * FROM review_workflow_checkpoint
+        WHERE review_id = #{reviewId,typeHandler=com.hexascope.common.PostgresUuidTypeHandler}
+        ORDER BY updated_at DESC
+        LIMIT 1
+    </select>
+
+    <select id="findByWorkflowInstanceId" resultMap="workflowCheckpointResultMap">
+        SELECT * FROM review_workflow_checkpoint
+        WHERE workflow_instance_id = #{workflowInstanceId}
+    </select>
+
+    <update id="updateNodeState">
+        UPDATE review_workflow_checkpoint
+        SET current_node = #{currentNode},
+            status = #{status},
+            state_snapshot = #{stateSnapshot,typeHandler=com.hexascope.common.JsonbTypeHandler},
+            error_message = #{errorMessage},
+            updated_at = NOW(),
+            completed_at = CASE WHEN #{completed} THEN NOW() ELSE completed_at END
+        WHERE workflow_instance_id = #{workflowInstanceId}
+          AND status &lt;&gt; 'completed'
+    </update>
+
+    <update id="tryStartResume">
+        UPDATE review_workflow_checkpoint
+        SET status = #{runningStatus},
+            resume_count = resume_count + 1,
+            error_message = NULL,
+            updated_at = NOW()
+        WHERE id = #{id,typeHandler=com.hexascope.common.PostgresUuidTypeHandler}
+          AND status = #{failedStatus}
+          AND resume_count &lt; #{maxResumeCount}
+    </update>
+
+</mapper>

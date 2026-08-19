@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 文件说明：MyBatis XML 映射配置，承载复杂查询与结果映射规则。 -->
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hexascope.mapper.ReviewRecordMapper">
+
+    <resultMap id="reviewRecordResultMap" type="com.hexascope.model.entity.ReviewRecord">
+        <id column="id" property="id"/>
+        <result column="requirement_id" property="requirementId"/>
+        <result column="workspace_id" property="workspaceId"/>
+        <result column="team_id" property="teamId"/>
+        <result column="requirement_title" property="requirementTitle"/>
+        <result column="requirement_description" property="requirementDescription"/>
+        <result column="priority" property="priority"/>
+        <result column="requirement_url" property="requirementUrl"/>
+        <result column="creator" property="creator"/>
+        <result column="total_score" property="totalScore"/>
+        <result column="level" property="level"/>
+        <result column="dimension_scores" property="dimensionScores" typeHandler="com.hexascope.common.JsonbTypeHandler"/>
+        <result column="ai_suggestions" property="aiSuggestions" typeHandler="com.hexascope.common.JsonbTypeHandler"/>
+        <result column="improvement_suggestion" property="improvementSuggestion"/>
+        <result column="status" property="status"/>
+        <result column="reviewed_by" property="reviewedBy"/>
+        <result column="ai_model_used" property="aiModelUsed"/>
+        <result column="ai_latency_ms" property="aiLatencyMs"/>
+        <result column="raw_prompt" property="rawPrompt"/>
+        <result column="raw_ai_response" property="rawAiResponse"/>
+        <result column="retrigger_count" property="retriggerCount"/>
+        <result column="created_at" property="createdAt" typeHandler="com.hexascope.common.PostgresLocalDateTimeTypeHandler"/>
+        <result column="completed_at" property="completedAt" typeHandler="com.hexascope.common.PostgresLocalDateTimeTypeHandler"/>
+        <result column="updated_at" property="updatedAt" typeHandler="com.hexascope.common.PostgresLocalDateTimeTypeHandler"/>
+        <result column="is_deleted" property="isDeleted"/>
+    </resultMap>
+
+    <select id="pageByConditions" resultMap="reviewRecordResultMap">
+        SELECT * FROM review_record
+        WHERE is_deleted = false
+        <if test="teamId != null and teamId != ''">
+            AND team_id = #{teamId}
+        </if>
+        <if test="creator != null and creator != ''">
+            AND creator = #{creator}
+        </if>
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        <if test="minScore != null">
+            AND total_score &gt;= #{minScore}
+        </if>
+        <if test="maxScore != null">
+            AND total_score &lt;= #{maxScore}
+        </if>
+        <if test="startTime != null">
+            AND created_at &gt;= #{startTime}
+        </if>
+        <if test="endTime != null">
+            AND created_at &lt;= #{endTime}
+        </if>
+        ORDER BY created_at DESC
+    </select>
+
+</mapper>
