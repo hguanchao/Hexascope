@@ -45,7 +45,6 @@ replay_pid*
 *.jks
 *.keystore
 keystore/
-server/src/main/resources/application-dev.yml
 server/src/main/resources/application-local.yml
 server/src/main/resources/application-prod.yml
 server/src/main/resources/application-*.local.yml

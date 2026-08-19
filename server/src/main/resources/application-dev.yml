@@ -1,0 +1,242 @@
+# 文件说明：Spring Boot 环境配置，集中管理服务端口、数据源、缓存和 AI 参数。
+spring:
+  # 数据库连接配置：后端业务表和 pgvector 向量表都放在这个 PostgreSQL 实例里。
+  datasource:
+    # PostgreSQL 连接地址（本地/占位：生产或内网环境通过环境变量/配置文件注入）。
+    url: jdbc:postgresql://localhost:5433/hexascope
+    # PostgreSQL 用户名（默认本地用户，可通过环境变量覆盖）。
+    username: "${HEXASCOPE_POSTGRES_USER:pgvector}"
+    # PostgreSQL 密码（占位：通过环境变量 HEXASCOPE_PGVECTOR_PASSWORD 注入）。
+    password: "${HEXASCOPE_PGVECTOR_PASSWORD:change-me}"
+    # PostgreSQL JDBC 驱动类。
+    driver-class-name: org.postgresql.Driver
+    # HikariCP 数据库连接池配置，用来复用数据库连接，避免频繁创建连接。
+    hikari:
+      # 连接池最大连接数。
+      maximum-pool-size: 20
+      # 连接池最小空闲连接数。
+      minimum-idle: 5
+      # 空闲连接最长保留时间，单位毫秒。
+      idle-timeout: 300000
+      # 获取数据库连接的最长等待时间，单位毫秒。
+      connection-timeout: 20000
+  # Flyway 数据库迁移配置，用来按版本执行 db/migration 下的 SQL 脚本。
+  flyway:
+    # 是否启用 Flyway。
+    enabled: true
+    # 数据库迁移脚本目录。
+    locations: classpath:db/migration
+    # 已存在数据库时允许 Flyway 建立基线，避免首次接入时报错。
+    baseline-on-migrate: true
+  # Redis 配置：当前用于重审限流锁等临时状态。
+  data:
+    redis:
+      # Redis 主机地址（本地/占位）。
+      host: localhost
+      # Redis 端口。
+      port: 6379
+      # Redis 密码（占位：通过环境变量 HEXASCOPE_REDIS_PASSWORD 注入）。
+      password: "${HEXASCOPE_REDIS_PASSWORD:change-me}"
+      # Redis 数据库编号。
+      database: 0
+      # Lettuce Redis 连接池配置。
+      lettuce:
+        pool:
+          # Redis 最大活跃连接数。
+          max-active: 16
+          # Redis 最大空闲连接数。
+          max-idle: 8
+          # Redis 最小空闲连接数。
+          min-idle: 4
+  # Spring AI 配置：统一声明聊天模型、向量模型和向量库。
+  ai:
+    # 指定 Spring AI 当前使用 OpenAI 兼容接口。
+    model:
+      # 聊天模型使用 OpenAI 兼容适配器。
+      chat: openai
+      # 向量模型使用 OpenAI 兼容适配器。
+      embedding: openai
+      # 文本向量模型使用 OpenAI 兼容适配器。
+      embedding.text: openai
+    # OpenAI 兼容接口配置：这里分别配置聊天模型和 embedding 模型。
+    openai:
+      # 聊天模型接口密钥（占位：通过环境变量 HEXASCOPE_API_KEY 注入）。
+      api-key: "${HEXASCOPE_API_KEY:your-api-key-here}"
+      # 聊天模型接口地址。
+      base-url: https://api.siliconflow.cn
+      # 聊天模型参数。
+      chat:
+        options:
+          # 实际调用的聊天模型名称。
+          model: Qwen/Qwen3.5-4B
+      # 向量模型参数：用于 RAG 检索，不负责聊天回答。
+      embedding:
+        # 向量模型接口密钥。
+        api-key: ${spring.ai.openai.api-key}
+        # 向量模型接口地址，当前使用硅基流动。
+        base-url: ${spring.ai.openai.base-url}
+        # OpenAI 兼容 embedding 接口路径。
+        embeddings-path: /v1/embeddings
+        options:
+          # 当前向量模型，输出 1024 维向量，数据库 embedding 字段必须是 vector(1024)。
+          model: BAAI/bge-m3
+    # 向量数据库配置：Spring AI 会通过 pgvector 存储和检索评分标准向量。
+    vectorstore:
+      pgvector:
+        # 向量索引类型，HNSW 适合快速近似检索。
+        index-type: hnsw
+        # 向量距离算法，cosine_distance 表示按余弦相似度检索。
+        distance-type: cosine_distance
+        # 向量维度，必须和 BAAI/bge-m3 输出维度一致。
+        dimensions: 1024
+        # 启动时自动初始化 pgvector 表结构；已有表不会自动改字段维度。
+        initialize-schema: true
+
+# MyBatis-Plus 配置，负责实体和数据库表之间的映射。
+mybatis-plus:
+  # XML Mapper 文件路径。
+  mapper-locations: classpath*:mapper/*.xml
+  # MyBatis 基础配置。
+  configuration:
+    # 自动把数据库下划线字段映射成 Java 驼峰字段。
+    map-underscore-to-camel-case: true
+    # SQL 日志实现，便于开发阶段排查 SQL。
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  # MyBatis-Plus 全局配置。
+  global-config:
+    db-config:
+      # 默认 ID 生成策略。
+      id-type: assign_uuid
+      # 逻辑删除字段名。
+      logic-delete-field: isDeleted
+      # 逻辑删除后的字段值。
+      logic-delete-value: true
+      # 未删除时的字段值。
+      logic-not-delete-value: false
+    # 是否显示 MyBatis-Plus 启动横幅。
+    banner: false
+
+# Resilience4j 容错配置：用于 AI 调用的熔断、重试和限流。
+resilience4j:
+  # 熔断器配置：当 AI 调用持续失败时，短时间内直接走降级逻辑。
+  circuitbreaker:
+    instances:
+      ai-review:
+        # 统计窗口大小，表示最近多少次调用参与失败率计算。
+        sliding-window-size: 20
+        # 失败率达到该百分比后打开熔断。
+        failure-rate-threshold: 50
+        # 熔断打开后等待多久再尝试恢复。
+        wait-duration-in-open-state: 30s
+        # 半开状态允许的试探调用次数。
+        permitted-number-of-calls-in-half-open-state: 3
+        # 是否自动从打开状态切换到半开状态。
+        automatic-transition-from-open-to-half-open-enabled: true
+  # 重试配置：AI 调用失败时自动再试几次。
+  retry:
+    instances:
+      ai-review:
+        # 最大尝试次数，包含第一次调用。
+        max-attempts: 3
+        # 每次重试之间的初始等待时间。
+        wait-duration: 2s
+        # 指数退避倍率，下一次等待时间会按该倍率增长。
+        exponential-backoff-multiplier: 2
+  # 限流配置：控制某些操作的调用频率。
+  ratelimiter:
+    instances:
+      retrigger:
+        # 每个刷新周期允许的调用次数。
+        limit-for-period: 1
+        # 限流刷新周期。
+        limit-refresh-period: 5m
+        # 获取限流许可的最长等待时间。
+        timeout-duration: 100ms
+
+# Hexascope 业务自定义配置。
+hexascope:
+  # RAG 检索配置：控制从评分标准知识库里找多少内容、筛选多严格。
+  rag:
+    # RAG 向量检索默认返回数量。
+    # 如果没有启用 reranker，最终进入 Prompt 的评分标准数量就是这个值。
+    top-k: 10
+    # 向量相似度阈值，低于该阈值的评分标准不会被召回。
+    # 阈值越高，结果越严格；阈值越低，召回更多但可能混入不相关内容。
+    similarity-threshold: 0.65
+    # 送入 embedding 检索的最大文本长度，避免整篇 PRD 超过上游参数限制。
+    query-max-chars: 4000
+    # 长需求会按开头、中段、结尾等位置抽样为多条检索 query，而不是只截取开头。
+    query-max-count: 3
+  # AI 评分输入配置。原始需求描述仍完整入库，这里只控制发给模型的工作副本长度。
+  review:
+    description-max-chars: 12000
+  # Reranker 重排序配置：pgvector 先粗召回，再由 reranker 精排。
+  reranker:
+    # 是否启用重排序。
+    # true：pgvector 先粗召回，再调用 reranker 精排。
+    # false：只使用 pgvector 原始排序，不调用外部重排序接口。
+    enabled: true
+    # 硅基流动接口根地址，代码会自动拼接 /v1/rerank。
+    base-url: ${spring.ai.openai.base-url}
+    # reranker 接口密钥。
+    # 当前复用 embedding 的硅基流动密钥，避免维护两份相同配置。
+    api-key: ${spring.ai.openai.api-key}
+    # 重排序模型。
+    # 它不生成向量，只判断“当前需求”和“候选评分标准”的相关性。
+    model: BAAI/bge-reranker-v2-m3
+    # pgvector 粗召回数量。
+    # 开启 reranker 后，先多捞一些候选给 reranker 排序；这个值通常要大于 top-n。
+    candidate-k: 20
+    # reranker 精排后最终保留数量。
+    # 只有这些评分标准会进入大模型 Prompt，数量太多会增加上下文噪声。
+    top-n: 8
+    # 单条候选文档过长时，reranker 内部最多切分多少块参与计算。
+    max-chunks-per-doc: 1024
+    # 文档切块时相邻块重叠 token 数，用来减少切块边界造成的语义割裂。
+    overlap-tokens: 20
+  # 知识库混合检索配置：pgvector 向量路 + pg_trgm 关键词路融合召回。
+  kb:
+    # 知识库分块配置：Excel 行文本超限时按边界切块，块间保留重叠。
+    chunk:
+      # 单块最大字符数，超过该值的行文本会被切分。
+      max-char-per-chunk: 1500
+      # 相邻块之间的重叠字符数。
+      overlap-chars: 200
+      # 小于该长度的块直接丢弃。
+      min-chunk-chars: 100
+    hybrid:
+      # 是否启用混合检索。
+      # true：向量 + 关键词两路召回后 RRF 融合，再交给 reranker 精排。
+      # false：保持纯向量检索（旧版行为）。
+      enabled: true
+      # 向量路单条 query 的召回数量（会取 max(调用方 topK, 该值)）。
+      vector-top: 30
+      # 关键词路单条 query 的召回数量。
+      keyword-top: 10
+      # 关键词路使用的 query 最大字符数（trigram 相似度对超长 query 区分度差）。
+      keyword-query-max-chars: 300
+      # 关键词路参与比对的 content 最大字符数。
+      keyword-content-max-chars: 2048
+      # 关键词路最小相似度阈值。
+      min-keyword-score: 0.05
+      # 融合方式：rrf（默认）或 weighted（加权和）。
+      fusion: rrf
+      # RRF 融合常数 k。
+      rrf-k: 60
+      # 加权融合时向量路/关键词路的权重。
+      vector-weight: 0.6
+      keyword-weight: 0.4
+
+# 日志配置：保留必要排查信息，避免 SQL 参数日志输出完整需求正文和 Prompt。
+logging:
+  file:
+    name: logs/server.log
+  logback:
+    rollingpolicy:
+      max-file-size: 20MB
+      max-history: 14
+      total-size-cap: 1GB
+  level:
+    com.hexascope: DEBUG
+    com.hexascope.mapper: INFO
+    org.springframework.ai: INFO
